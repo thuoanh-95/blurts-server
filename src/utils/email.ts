@@ -15,7 +15,7 @@ let gTransporter: Transporter<SentMessageInfo>;
 
 const envVars = getEnvVarsOrThrow(["SMTP_URL", "EMAIL_FROM", "SES_CONFIG_SET"]);
 
-async function initEmail(smtpUrl = envVars.SMTP_URL) {
+export async function initEmail(smtpUrl = envVars.SMTP_URL) {
   // Allow a debug mode that will log JSON instead of sending emails.
   if (!smtpUrl) {
     logger.info("smtpUrl-empty", {
@@ -30,6 +30,14 @@ async function initEmail(smtpUrl = envVars.SMTP_URL) {
   return gTransporterVerification;
 }
 
+/** See https://nodemailer.com/smtp/pooled/ */
+export function closeEmailPool() {
+  if (!gTransporter) {
+    throw new Error("`closeEmailPool` called before `initEmail`");
+  }
+  gTransporter.close();
+}
+
 /**
  * Send Email
  *
@@ -37,7 +45,7 @@ async function initEmail(smtpUrl = envVars.SMTP_URL) {
  * @param subject
  * @param html
  */
-async function sendEmail(
+export async function sendEmail(
   recipient: string,
   subject: string,
   html: string,
@@ -86,8 +94,6 @@ async function sendEmail(
   }
 }
 
-function randomToken(length: number = 64) {
+export function randomToken(length: number = 64) {
   return crypto.randomBytes(length).toString("hex");
 }
-
-export { initEmail, sendEmail, randomToken };
