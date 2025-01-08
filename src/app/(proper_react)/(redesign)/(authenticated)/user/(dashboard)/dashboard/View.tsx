@@ -62,7 +62,7 @@ export type TabType = "action-needed" | "fixed";
 
 export type Props = {
   enabledFeatureFlags: FeatureFlagName[];
-  experimentData: ExperimentData;
+  experimentData: ExperimentData["Features"];
   user: Session["user"];
   userBreaches: SubscriberBreach[];
   userScanData: LatestOnerepScanData;
@@ -178,8 +178,8 @@ export const View = (props: Props) => {
     arraySortedByDate.filter((exposure: Exposure) => {
       const exposureStatus = getExposureStatus(
         exposure,
-        props.enabledFeatureFlags.includes("AdditionalRemovalStatuses"),
         isDataBrokerUnderMaintenance(exposure),
+        props.enabledFeatureFlags,
       );
 
       return (
@@ -231,12 +231,15 @@ export const View = (props: Props) => {
               variant="primary"
               wide
               href={
-                getNextGuidedStep({
-                  user: props.user,
-                  countryCode,
-                  latestScanData: adjustedScanData,
-                  subscriberBreaches: props.userBreaches,
-                }).href
+                getNextGuidedStep(
+                  {
+                    user: props.user,
+                    countryCode,
+                    latestScanData: adjustedScanData,
+                    subscriberBreaches: props.userBreaches,
+                  },
+                  props.enabledFeatureFlags,
+                ).href
               }
             >
               {l10n.getString("exposure-card-resolve-exposures-cta")}
@@ -530,6 +533,7 @@ export const View = (props: Props) => {
           yearlySubscriptionUrl={props.yearlySubscriptionUrl}
           subscriptionBillingAmount={props.subscriptionBillingAmount}
           totalNumberOfPerformedScans={props.totalNumberOfPerformedScans}
+          enabledFeatureFlags={props.enabledFeatureFlags}
         />
         <section className={styles.exposuresArea}>
           {activeTab === "action-needed" ? (
@@ -566,6 +570,7 @@ export function isDataBrokerUnderMaintenance(
 ): boolean {
   return (
     isScanResult(exposure) &&
-    exposure.broker_status === "removal_under_maintenance"
+    exposure.broker_status === "removal_under_maintenance" &&
+    exposure.status !== "removed"
   );
 }

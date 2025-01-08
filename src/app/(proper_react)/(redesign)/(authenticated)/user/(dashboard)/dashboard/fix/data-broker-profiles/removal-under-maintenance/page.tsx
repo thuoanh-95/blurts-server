@@ -19,13 +19,27 @@ import { getSubscriberBreaches } from "../../../../../../../../../functions/serv
 import { getSubscriberEmails } from "../../../../../../../../../functions/server/getSubscriberEmails";
 import { RemovalUnderMaintenanceView } from "./RemovalUnderMaintenanceView";
 import { hasPremium } from "../../../../../../../../../functions/universal/user";
+import { getEnabledFeatureFlags } from "../../../../../../../../../../db/tables/featureFlags";
 
 export default async function RemovalUnderMaintenance() {
   const session = await getServerSession();
   const countryCode = getCountryCode(headers());
-  if (!session?.user?.subscriber?.id || !hasPremium(session.user)) {
+
+  if (!session?.user?.subscriber?.id) {
+    return redirect("/");
+  }
+
+  const enabledFeatureFlags = await getEnabledFeatureFlags({
+    email: session.user.email,
+  });
+
+  if (
+    !hasPremium(session.user) ||
+    !enabledFeatureFlags.includes("EnableRemovalUnderMaintenanceStep")
+  ) {
     redirect("/user/dashboard");
   }
+
   const profileId = await getOnerepProfileId(session.user.subscriber.id);
   const latestScan = await getScanResultsWithBroker(
     profileId,
@@ -44,7 +58,11 @@ export default async function RemovalUnderMaintenance() {
     }),
   };
 
-  const getNextStep = getNextGuidedStep(data, "DataBrokerManualRemoval");
+  const getNextStep = getNextGuidedStep(
+    data,
+    enabledFeatureFlags,
+    "DataBrokerManualRemoval",
+  );
 
   if (
     scansWithRemovalUnderMaintenance?.results.length === 0 ||
@@ -60,6 +78,7 @@ export default async function RemovalUnderMaintenance() {
       stepDeterminationData={data}
       data={scansWithRemovalUnderMaintenance}
       subscriberEmails={subscriberEmails}
+      enabledFeatureFlags={enabledFeatureFlags}
     />
   );
 }
